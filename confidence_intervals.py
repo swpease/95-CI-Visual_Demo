@@ -24,8 +24,6 @@ for run in range(replicates):
         random.shuffle(fake_data)
     all_samplings.append(samples)
 
-# So all_samplings looks like [{(s1,s2,s3,s4,s5),(s1',s2',s3',s4',s5')...98more...},{}...98more 100-sampling sets]
-
 sample_means_list = []
 sample_ses_list = []
 
@@ -48,23 +46,18 @@ for i in range(replicates):
             misses += 1
     all_misses.append(misses)
 
-# mean_misses = np.mean(all_misses)
+mean_misses = np.mean(all_misses)
 # print('List of misses: {0}'.format(all_misses))
-# print('Average misses: {0:.2f}'.format(mean_misses))
+print('Average misses: {0:.2f}'.format(mean_misses))
+
+
+
+# PLOTTING THE RESULTS FOR A GIVEN ROUND OF SAMPLING
 
 sample_means = sample_means_list[0]  # The y-axis
 sample_ses = sample_ses_list[0]
 sample_cis = [se * 1.96 for se in sample_ses]  # The error bar input - 95% CI's
 num = [i for i in range(1,101)]  # The x-axis
-
-colors = []
-for i, mean in enumerate(sample_means):
-    upper = mean + sample_cis[i]
-    lower = mean - sample_cis[i]
-    if upper < true_mean or lower > true_mean:
-        colors.append('r')
-    else:
-        colors.append('k')
 
 out_of_range = []
 out_of_range_num = []
@@ -72,8 +65,10 @@ out_of_range_ci = []
 in_range = []
 in_range_num = []
 in_range_ci = []
-for i, color in enumerate(colors):
-    if color == 'r':
+for i, mean in enumerate(sample_means):
+    upper = mean + sample_cis[i]
+    lower = mean - sample_cis[i]
+    if upper < true_mean or lower > true_mean:
         out_of_range.append(sample_means[i])
         out_of_range_num.append(i)
         out_of_range_ci.append(sample_cis[i])
