@@ -1,54 +1,45 @@
-#import itertools  # Don't need if just taking a subset of possible combos
 import numpy as np
 from scipy import stats
 import random
-import matplotlib as plt
-"""
-There doesn't appear to be any way to get around just having to go through
-a ton of calculations by cheating using generators or something -- at some
-point, you have to bite the bullet, so just do it up front.
-"""
+import matplotlib.pyplot as plt
 
-#np.random.seed(0)
-#random.seed(0)
 
 true_mean = 0
 true_sd = 1
 total_pop = 1000
-n = 5  # Play with this number to see how 95% CI can change.
+n = 30  # Play with this number to see how 95% CI can change.
 
+# Generating a normally distributed array of total_pop elements
 fake_data = np.random.normal(true_mean, true_sd, total_pop)
 random.shuffle(fake_data)
-# I made a list b/c ndarray is not hashable (for the set() below)
 
-# Getting the random "n = 5" selections from the population (fake_data) [currently seeded]
-
-combos_list = []
-cycles = 100
 samplings = 100
+replicates = 3  # To generate a mean over the each set of 100 samplings' false positives.
+all_samplings = []
 
-for run in range(cycles):
-    combos = set()
-    while len(combos) < samplings:
-        combos.add(tuple(fake_data[:n]))
-        random.shuffle(fake_data)  # A slow part of this process: O(total_pop * samplings)
-    combos_list.append(combos)
+for run in range(replicates):
+    samples = set()  # To avoid duplicate resamplings.
+    while len(samples) < samplings:
+        samples.add(tuple(fake_data[:n]))
+        random.shuffle(fake_data)
+    all_samplings.append(samples)
 
+# So all_samplings looks like [{(s1,s2,s3,s4,s5),(s1',s2',s3',s4',s5')...98more...},{}...98more 100-sampling sets]
 
 sample_means_list = []
 sample_ses_list = []
 
-for combo in combos_list:
+for combos in all_samplings:
     sample_means = []
     sample_ses = []
-    for i in combo:
+    for i in combos:
         sample_means.append(np.mean(i))
         sample_ses.append(stats.sem(i))
     sample_means_list.append(sample_means)
     sample_ses_list.append(sample_ses)
 
 all_misses = []
-for i in range(cycles):
+for i in range(replicates):
     misses = 0
     for j in range(samplings):
         upper = sample_means_list[i][j] + 1.96 * sample_ses_list[i][j]
@@ -57,36 +48,48 @@ for i in range(cycles):
             misses += 1
     all_misses.append(misses)
 
-mean_misses = np.mean(all_misses)
-print('List of misses: {0}'.format(all_misses))
-print('Average misses: {0:.2f}'.format(mean_misses))
+# mean_misses = np.mean(all_misses)
+# print('List of misses: {0}'.format(all_misses))
+# print('Average misses: {0:.2f}'.format(mean_misses))
 
-# Let's try where n = 5
-# perms = set()
-# while len(perms) < 100:
-#     perms.add(list(itertools.combinations(fake_data, 5)))
-#     random.shuffle(fake_data)
-#
-# print(perms)
+sample_means = sample_means_list[0]  # The y-axis
+sample_ses = sample_ses_list[0]
+sample_cis = [se * 1.96 for se in sample_ses]  # The error bar input - 95% CI's
+num = [i for i in range(1,101)]  # The x-axis
 
-#
-# all_combos = []
-# for i in range(1, len(fake_data) + 1):
-#     perms = (np.array(x) for x in itertools.combinations(fake_data, i))
-#     all_combos.append(perms)
-#
-#
-# test_of_se = []
-# n = 1
-# for gen in all_combos:
-#     means = (np.mean(i) for i in gen)
-#     test_of_se.append((means, n))
-#     n += 1
-#
-# x = 0
-# for i in test_of_se[3][0]:
-#     x += i
-#
-# print(x)
-# # new_sd = np.std(test_of_se)
-# # print(new_sd)
+colors = []
+for i, mean in enumerate(sample_means):
+    upper = mean + sample_cis[i]
+    lower = mean - sample_cis[i]
+    if upper < true_mean or lower > true_mean:
+        colors.append('r')
+    else:
+        colors.append('k')
+
+out_of_range = []
+out_of_range_num = []
+out_of_range_ci = []
+in_range = []
+in_range_num = []
+in_range_ci = []
+for i, color in enumerate(colors):
+    if color == 'r':
+        out_of_range.append(sample_means[i])
+        out_of_range_num.append(i)
+        out_of_range_ci.append(sample_cis[i])
+    else:
+        in_range.append(sample_means[i])
+        in_range_num.append(i)
+        in_range_ci.append(sample_cis[i])
+
+plt.figure()
+plt.title("95% CI Replicates for Ideal (Fake) Data")
+plt.xlabel("Replicate of Sampling")
+plt.ylabel("Data Value")
+
+plt.errorbar(in_range_num, in_range, yerr=in_range_ci, fmt='o', color='k')
+plt.errorbar(out_of_range_num, out_of_range, yerr=out_of_range_ci, fmt='o', color='r')
+plt.axhline(color='g')
+plt.yticks((-1, 0, 1), ('-1', '0', '1'))
+
+plt.show()
