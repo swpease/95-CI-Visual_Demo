@@ -1,6 +1,5 @@
 import numpy as np
 from scipy import stats
-import random
 import matplotlib.pyplot as plt
 
 # Our "real" population and parameter-of-interest stats:
@@ -10,8 +9,6 @@ total_pop = 1000
 
 # Generating a normally distributed array of total_pop elements
 fake_data = np.random.normal(true_mean, true_sd, total_pop)
-random.shuffle(fake_data)
-
 
 # Our "observed" data:
 n = 30  # Play with this number to see how 95% CI can change.
@@ -22,8 +19,7 @@ all_samplings = []
 for replicate in range(replicates):
     samples = set()  # To avoid duplicate resamplings.
     while len(samples) < samplings:
-        samples.add(tuple(fake_data[:n]))
-        random.shuffle(fake_data)
+        samples.add(tuple(np.random.choice(fake_data, n, replace=False)))
     all_samplings.append(samples)
 
 sample_means_list = []
